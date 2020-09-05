@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <errno.h>
 
 #define MEM_BITS 6
 #define MEM_SIZE 1 << MEM_BITS
@@ -14,6 +15,8 @@
 #define MATCH_ADD 1 // opcode: 01AAAAAA
 #define MATCH_STA 2 // opcode: 10AAAAAA
 #define MATCH_JCC 3 // opcode: 11AAAAAA
+
+#define DEBUG_OUTPUT
 
 void* mallocz(size_t size)
 {
@@ -65,26 +68,32 @@ void jcc(mcpu_state* state, uint8_t opcode) {
 	if (opcode == 0xFF) //output pseudo-instruction 0xFF
 		printf("%d\n", state->accu);
 	else if (state->carry == 0) {
+		//check for a simple infinite loop
+		if (state->pc - 1 == immediate)
+		{
+			printf("[infinite loop]\n");
+			exit(1);
+		}
 		state->pc = immediate;
 	}
 	state->carry = 0;
 }
 
-void disassemble(mcpu_state *state, char* str) {
+void disassemble(mcpu_state* state, char* str) {
 	uint8_t opcode = state->memory[state->pc];
 	uint8_t immediate = opcode & 0x3f;
 	switch (opcode >> 6) {
 	case MATCH_NOR:
-		sprintf(str, "NOR $%2X [%2X]", immediate, state->memory[immediate]);
+		sprintf(str, "NOR $%02X [%02X]", immediate, state->memory[immediate]);
 		break;
 	case MATCH_ADD:
-		sprintf(str, "ADD $%2X [%2X]", immediate, state->memory[immediate]);
+		sprintf(str, "ADD $%02X [%02X]", immediate, state->memory[immediate]);
 		break;
 	case MATCH_STA:
-		sprintf(str, "STA $%2X", immediate);
+		sprintf(str, "STA $%02X", immediate);
 		break;
 	case MATCH_JCC:
-		sprintf(str, "JCC $%2X", immediate);
+		sprintf(str, "JCC $%02X", immediate);
 		break;
 	}
 }
@@ -97,7 +106,7 @@ void emulate_instruction(mcpu_state* state) {
 	INS_MATCH(MATCH_JCC, jcc);
 }
 
-void read_program(char* name, uint8_t *buffer) {
+void read_program(char* name, uint8_t* buffer) {
 #define BIN_SIZE 64
 	FILE* file = fopen(name, "rb");
 	if (!file) {
@@ -111,14 +120,16 @@ void read_program(char* name, uint8_t *buffer) {
 }
 
 int main(int argc, char* argv[]) {
-	mcpu_state* state = mallocz(sizeof(mcpu_state));
+	mcpu_state* state = (mcpu_state*)mallocz(sizeof(mcpu_state));
 	//read the program
-	read_program("programs/prog_test.bin", state->memory);
+	read_program("programs/prog_prime.bin", state->memory);
 	//start execution at PC 0
 	while (1) {
 		char dasm_buffer[128];
 		disassemble(state, dasm_buffer);
 		emulate_instruction(state);
+		#ifdef DEBUG_OUTPUT
 		printf("%-20s  A:%02X C:%01X PC:%02X\n", dasm_buffer, state->accu, state->carry, state->pc);
+		#endif
 	}
 }
