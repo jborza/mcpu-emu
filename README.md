@@ -15,4 +15,4 @@ The instruction set is:
 | STA | 10AAAAAA | mem\[AAAAAA\] = Acc
 | JCC | 11AAAAAA | PC = AAAAAA if carry = 0, clear carry
 
-
+I've also added an "OUT" instruction according to Jean-Claude Wippler's [TFoC - A minimal computer](https://jeelabs.org/2017/11/tfoc---a-minimal-computer/) article, with the opcode of 0xFF that prints the accumulator to the standard output.
