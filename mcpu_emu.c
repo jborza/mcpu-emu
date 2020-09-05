@@ -10,10 +10,10 @@
 
 #define INS_MATCH(MATCH,HANDLER) if ((*opcode >> 6) == MATCH) { HANDLER(state, *opcode);	}
 
-#define MATCH_NOR 0
-#define MATCH_ADD 1
-#define MATCH_STA 2
-#define MATCH_JCC 3
+#define MATCH_NOR 0 //opcode: 00AAAAAA
+#define MATCH_ADD 1 // opcode: 01AAAAAA
+#define MATCH_STA 2 // opcode: 10AAAAAA
+#define MATCH_JCC 3 // opcode: 11AAAAAA
 
 void* mallocz(size_t size)
 {
@@ -38,32 +38,33 @@ typedef struct mcpu_state {
 
 // instruction set: NOR, ADD, STA, JCC
 
-// opcode: 00AAAAAA
+//Acc = Acc NOR mem[AAAAAA]
 void nor(mcpu_state* state, uint8_t opcode) {
-	//Acc = Acc NOR mem[AAAAAA]
 	state->accu = (state->accu | state->memory[opcode]) ^ 0xFF;
 }
-// opcode: 01AAAAAA
+
+//Acc = Acc +  mem[AAAAAA], update carry
 void add(mcpu_state* state, uint8_t opcode) {
 	uint8_t immediate = opcode & 0x3f;
 	//update carry first
 	uint16_t result = (state->accu + state->memory[immediate]);
 	state->carry = result >> 8;
-	//Acc = Acc +  mem[AAAAAA], update carry
 	state->accu = result;
 }
-// opcode: 10AAAAAA
+
+//mem[AAAAAA] = Acc
 void sta(mcpu_state* state, uint8_t opcode) {
 	uint8_t immediate = opcode & 0x3f;
-	//mem[AAAAAA] = Acc
 	state->memory[immediate] = state->accu;
 
 }
-// opcode: 11AAAAAA
+
+//PC = AAAAAA if carry = 0, clear carry
 void jcc(mcpu_state* state, uint8_t opcode) {
-	//PC = AAAAAA if carry = 0, clear carry
 	uint8_t immediate = opcode & 0x3f;
-	if (state->carry == 0) {
+	if (opcode == 0xFF) //output pseudo-instruction 0xFF
+		printf("%d\n", state->accu);
+	else if (state->carry == 0) {
 		state->pc = immediate;
 	}
 	state->carry = 0;
@@ -90,7 +91,6 @@ void disassemble(mcpu_state *state, char* str) {
 
 void emulate_instruction(mcpu_state* state) {
 	uint8_t* opcode = &state->memory[state->pc++];
-	//all opcodes
 	INS_MATCH(MATCH_NOR, nor);
 	INS_MATCH(MATCH_ADD, add);
 	INS_MATCH(MATCH_STA, sta);
